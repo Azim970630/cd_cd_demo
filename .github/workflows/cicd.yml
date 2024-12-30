@@ -101,7 +101,7 @@ jobs:
           docker logs flask-app > flask-app.log 2>&1 || true
           
           echo 'Stopping existing container...'
-          docker stop $(docker ps -a -q) || true
+          docker stop $(docker ps -q) || true
           docker rm $(docker ps -a -q) || true
 
           echo 'Remove old image...'
