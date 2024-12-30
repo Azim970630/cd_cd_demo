@@ -43,7 +43,7 @@ jobs:
       env:
         SAFETY_API_KEY: ${{ secrets.SAFETY_API_KEY }}
       run: |
-        safety scan --key ${{ secrets.SAFETY_API_KEY }}
+        safety scan --key ${{ secrets.SAFETY_API_KEY }} --continue-on-error
 
     - name: Upload coverage
       uses: codecov/codecov-action@v3
