@@ -141,4 +141,4 @@ jobs:
       if: failure()
       run: |
         echo "Deployment failed. Checking logs..."
-        ssh azureuser@$VM_IP "docker logs flask-app"
+        ssh azureuser@$VM_IP "docker logs flask-app" 
