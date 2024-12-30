@@ -101,8 +101,11 @@ jobs:
           docker logs flask-app > flask-app.log 2>&1 || true
           
           echo 'Stopping existing container...'
-          docker stop flask-app || true
-          docker rm flask-app || true
+          docker stop $(docker ps -a -q) || true
+          docker rm $(docker ps -a -q) || true
+
+          echo 'Remove old image...'
+          docker rmi $(docker images -q) || true
           
           echo 'Building new image...'
           docker build -t flask-app:latest .
@@ -121,6 +124,10 @@ jobs:
             docker logs flask-app
             exit 1
           fi
+
+          echo 'Debug info...'
+          docker ps
+          docker logs flask-app
         "
 
     - name: Health check
