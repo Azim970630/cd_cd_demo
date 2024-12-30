@@ -75,6 +75,7 @@ jobs:
     - name: Build and test Docker image
       run: |
         ls -la  # Debug: list files
+        mv docker/Dockerfile .
         docker build -t flask-app:test .
         docker run --name test-container -d -p 8080:8080 flask-app:test
         sleep 10
