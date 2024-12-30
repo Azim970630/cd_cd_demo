@@ -128,12 +128,13 @@ jobs:
         echo "Performing health checks..."
         for i in {1..5}; do
           echo "Attempt $i..."
-          response=$(curl -s -w '%{http_code}' http://${{ secrets.VM_IP }}:8080)
-          if [ "$response" = "200" ]; then
+          RESPONSE=$(curl -s http://$VM_IP:8080/health)
+          echo "Raw response: $RESPONSE"
+          if [[ "$RESPONSE" == *"healthy"* ]]; then
             echo "Health check passed!"
             exit 0
           fi
-          echo "Response code: $response"
+          echo "Response: $RESPONSE"
           sleep 10
         done
         echo "Health check failed after 5 attempts"
