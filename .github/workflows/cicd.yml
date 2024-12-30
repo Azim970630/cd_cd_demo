@@ -31,7 +31,7 @@ jobs:
         pip install flake8 pytest pytest-cov bandit safety
 
     - name: Security check dependencies
-      run: safety check
+      run: safety scan
 
     - name: Lint with flake8
       run: |
