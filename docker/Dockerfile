@@ -12,4 +12,4 @@ EXPOSE 8080
 ENV PORT=8080
 ENV HOST=0.0.0.0
 
-CMD ["gunicorn", "--bind", "0.0.0.0:8080", "--workers", "4", "app.main:create_app()"]
+CMD ["gunicorn", "--bind", "0.0.0.0:8080", "--worker-class", "sync", "--workers", "1", "app.main:app"]
