@@ -60,7 +60,7 @@ jobs:
 
     - name: Run integration tests
       run: |
-        pip install -r requirements.txt
+        pip install -r requirements/requirements.txt
         python -m pytest tests/integration
 
     - name: Set up Docker Buildx
