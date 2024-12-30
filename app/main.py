@@ -7,6 +7,10 @@ from app.config.settings import PORT, HOST, DEBUG
 def create_app():
     app = Flask(__name__)
 
+    @app.route("/")
+    def home():
+        return jsonify({"status": "healthy"})
+
     @app.route("/health")
     def health_check():
         return jsonify({"status": "healthy"})
