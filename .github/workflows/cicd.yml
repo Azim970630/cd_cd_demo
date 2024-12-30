@@ -127,15 +127,24 @@ jobs:
       run: |
         echo "Performing health checks..."
         for i in {1..5}; do
+          echo "Attempt $i..."
           response=$(curl -s -w '%{http_code}' http://${{ secrets.VM_IP }}:8080)
           if [ "$response" = "200" ]; then
             echo "Health check passed!"
             exit 0
           fi
+          echo "Response code: $response"
           sleep 10
         done
         echo "Health check failed after 5 attempts"
+        ssh azureuser@$VM_IP "docker logs flask-app"
         exit 1
+
+    - name: Check network
+      run: |
+        echo "Checking network connectivity..."
+        nc -vz $VM_IP 8080 || true
+        curl -v telnet://$VM_IP:8080
 
     - name: Notify on failure
       if: failure()
