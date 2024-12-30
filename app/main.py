@@ -13,7 +13,9 @@ def create_app():
 
     @app.route("/health")
     def health_check():
-        return jsonify({"status": "healthy"})
+        return jsonify({
+            "status": "healthy"
+            })
 
     @app.route("/api/v1/version")
     def version():
