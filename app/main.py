@@ -1,7 +1,7 @@
 from flask import Flask, jsonify
 
 # Remove unused logger import if not used
-from app.config.settings import PORT, HOST, DEBUG
+from app.config.settings import DEBUG, HOST, PORT
 
 
 def create_app():
