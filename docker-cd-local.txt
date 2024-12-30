@@ -1,0 +1,36 @@
+# name of the workflow
+name: Docker CD  # Workflow name that appears in GitHub Actions UI
+
+on:
+  push:
+    branches: [ main ]  # Trigger workflow only on pushes to main branch
+
+jobs:
+    deploy:
+        runs-on: ubuntu-latest  # Job name: Use Ubuntu as the runner environment
+
+        steps:
+            - name: Checkout code  # Step 1: Get the code > Official GitHub action to clone repository
+              uses: actions/checkout@v3
+
+            - name: Generate SSL Certificate # Step 2: This step generates an SSL certificate.
+              run: |
+                mkdir -p certs
+                openssl req -x509 -newkey rsa:4096 -nodes \
+                  -out certs/cert.pem \
+                  -keyout certs/key.pem \
+                  -days 365 \
+                  -subj "/C=US/ST=State/L=City/O=Organization/CN=localhost"
+
+            - name: Build Docker image  # Step 3: Build container > Build and tag image as flask-app:latest
+              run: |
+                docker build -t flask-app:latest .  
+
+            - name: Stop existing container  # Step 3: Cleanup > Stop and remove existing container
+              run: |
+                docker stop flask-app || true
+                docker rm flask-app || true
+
+            - name: Deploy Docker container # Step 4: Run container > Run container in detached mode > name it as flask-app > map port 8080
+              run: |
+                docker run -d --name flask-app -p 8080:8080 flask-app:latest

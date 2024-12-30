@@ -1,0 +1,137 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        python-version: ['3.9', '3.10']
+        os: [ubuntu-latest]
+      fail-fast: false
+
+    runs-on: ${{ matrix.os }}
+    
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install flake8 pytest pytest-cov bandit safety
+
+    - name: Security check dependencies
+      run: safety check
+
+    - name: Lint with flake8
+      run: |
+        flake8 app tests --count --select=E9,F63,F7,F82 --show-source --statistics
+        flake8 app tests --count --exit-zero --max-complexity=10 --statistics
+
+    - name: Security check with bandit
+      run: bandit -r app
+
+    - name: Run tests and coverage
+      run: |
+        pytest tests --cov=app --cov-report=xml --cov-report=term-missing
+
+    - name: Upload coverage reports
+      if: runner.os == 'Linux'
+      uses: codecov/codecov-action@v3
+
+  deploy:
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    env:
+      VM_IP: ${{ secrets.VM_IP }}
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Run integration tests
+      run: |
+        pip install -r requirements.txt
+        python -m pytest tests/integration
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+
+    - name: Build and test Docker image
+      run: |
+        docker build -t flask-app:test .
+        docker run --name test-container -d -p 8080:8080 flask-app:test
+        sleep 10
+        curl http://localhost:8080 || exit 1
+        docker stop test-container
+        docker rm test-container
+
+    - name: Set up SSH
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        ssh-keyscan -H ${{ secrets.VM_IP }} >> ~/.ssh/known_hosts
+
+    - name: Copy files to VM
+      run: |
+        scp -r app/ requirements.txt Dockerfile azureuser@$VM_IP:~/
+
+    - name: Deploy to Azure VM
+      run: |
+        ssh azureuser@$VM_IP "
+          echo 'Backing up existing container logs...'
+          docker logs flask-app > flask-app.log 2>&1 || true
+          
+          echo 'Stopping existing container...'
+          docker stop flask-app || true
+          docker rm flask-app || true
+          
+          echo 'Building new image...'
+          docker build -t flask-app:latest .
+          
+          echo 'Starting container...'
+          docker run -d \
+            --name flask-app \
+            --restart unless-stopped \
+            -p 8080:8080 \
+            flask-app:latest
+          
+          echo 'Verifying deployment...'
+          sleep 10
+          if ! curl -s http://localhost:8080 > /dev/null; then
+            echo 'Deployment verification failed'
+            docker logs flask-app
+            exit 1
+          fi
+        "
+
+    - name: Health check
+      run: |
+        echo "Performing health checks..."
+        for i in {1..5}; do
+          response=$(curl -s -w '%{http_code}' http://${{ secrets.VM_IP }}:8080)
+          if [ "$response" = "200" ]; then
+            echo "Health check passed!"
+            exit 0
+          fi
+          sleep 10
+        done
+        echo "Health check failed after 5 attempts"
+        exit 1
+
+    - name: Notify on failure
+      if: failure()
+      run: |
+        echo "Deployment failed. Checking logs..."
+        ssh azureuser@$VM_IP "docker logs flask-app"

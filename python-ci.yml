@@ -1,0 +1,118 @@
+name: Python CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+# Define all jobs that will run in this workflow
+jobs:
+  # Main test job that runs the test suite
+  test:
+    # Matrix strategy configuration for parallel testing
+    strategy:
+      # Define test combinations
+      matrix:
+        # List of Python versions to test against
+        # Using LTS versions for stability
+        python-version: ['3.9', '3.10']
+        # List of operating systems to test on
+        # Ubuntu for Linux tests, Windows for cross-platform compatibility
+        os: [ubuntu-latest, windows-latest]
+      # Don't stop other tests if one environment fails
+      # Helps identify if issue is environment-specific
+      fail-fast: false
+
+    # Specify the runner environment from matrix
+    # Uses dynamic OS selection based on matrix.os
+    runs-on: ${{ matrix.os }}
+
+    # Sequential steps to execute in the job
+    steps:
+    # Step 1: Check out repository code
+    # Uses GitHub's official checkout action v3
+    - uses: actions/checkout@v3
+    
+    # Step 2: Configure Python environment
+    # Uses GitHub's official Python setup action v4
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        # Install Python version from matrix
+        python-version: ${{ matrix.python-version }}
+    
+    # Step 3: Install required Python packages
+    - name: Install dependencies
+      run: |
+        # Update pip to latest version
+        python -m pip install --upgrade pip
+        # Install testing tools:
+        # flake8: code linting
+        # pytest: unit testing
+        # pytest-cov: code coverage
+        # bandit: security scanning
+        pip install flake8 pytest pytest-cov bandit
+        
+    # Step 4: Run code quality checks
+    - name: Lint with flake8
+      run: |
+        # First check: Stop build on critical errors
+        # E9: Runtime errors
+        # F63: Error in f-string
+        # F7: Syntax errors
+        # F82: Undefined names
+        flake8 src tests --count --select=E9,F63,F7,F82 --show-source --statistics
+        # Second check: General code quality (non-blocking)
+        # --exit-zero: Continue even with warnings
+        # --max-complexity=10: Check code complexity
+        flake8 src tests --count --exit-zero --max-complexity=10 --statistics
+        
+    # Step 5: Security vulnerability scanning
+    # Uses bandit to check for common security issues
+    - name: Security check with bandit
+      run: |
+        # Recursive scan of source directory
+        # -r: Recursive scan through directories
+        bandit -r src
+        
+    # Step 6: Run unit tests with coverage reporting
+    # Uses pytest and pytest-cov for test execution and coverage
+    - name: Run tests and coverage
+      shell: bash    # Use bash shell for consistent command execution
+      run: |
+        # Add source directory to Python path
+        python -c "import sys; sys.path.append('./src')"
+        # Run tests with coverage reporting
+        # --cov=src: Measure coverage of src directory
+        # --cov-report=xml: Generate XML coverage report
+        pytest tests --cov=src --cov-report=xml
+        
+    # Step 7: Upload coverage data to Codecov
+    # Only runs on Linux to avoid duplicate uploads
+    - name: Upload coverage reports
+      if: runner.os == 'Linux'    # Conditional execution based on OS
+      uses: codecov/codecov-action@v3    # Official Codecov GitHub Action
+      
+    # Step 8: Run performance benchmarks
+    # Measures execution time of main function
+    - name: Performance test
+      shell: bash    # Ensure consistent shell across platforms
+      run: |
+        # -n 100: Number of iterations
+        # -r 3: Number of repetitions
+        # -s: Setup command
+        python -m timeit -n 100 -r 3 -s "import sys; sys.path.append('./src'); from app import main" "main()"
+        
+    # Step 9: Save test artifacts
+    # Preserves test results for later analysis
+    - name: Archive test results
+      if: always()    # Run this step regardless of previous step status
+      uses: actions/upload-artifact@v3    # Official GitHub artifact action
+      with:
+        # Dynamic naming based on OS and Python version
+        name: test-results-${{ runner.os }}-py${{ matrix.python-version }}
+        # Files to archive
+        path: |
+          coverage.xml    # Coverage report in XML format
+          .coverage      # Raw coverage data
