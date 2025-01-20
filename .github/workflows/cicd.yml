@@ -92,7 +92,7 @@ jobs:
 
     - name: Copy files to VM
       run: |
-        scp -r app/ tests/ requirements/ docker azureuser@$VM_IP:~/
+        scp -r app/ tests/ requirements/ docker/ azureuser@$VM_IP:~/
 
     - name: Deploy to Azure VM
       run: |
