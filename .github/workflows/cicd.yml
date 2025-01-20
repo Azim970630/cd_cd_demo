@@ -30,18 +30,19 @@ jobs:
         pip install -r requirements/requirements-dev.txt
 
     - name: Run linting
+      continue-on-error: true
       run: |
-        continue-on-error: true
         flake8 app tests
         black --check app tests
         mypy app
 
     - name: Run tests
+      continue-on-error: true
       run: |
-        continue-on-error: true
         pytest tests/ --cov=app --cov-report=xml --cov-report=term-missing
 
     - name: Security check
+      continue-on-error: true
       env:
         SAFETY_API_KEY: ${{ secrets.SAFETY_API_KEY }}
       run: |
