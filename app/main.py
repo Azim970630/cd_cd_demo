@@ -30,7 +30,7 @@ def create_app():
 
     @app.route("/")
     def home():
-        return jsonify({"status": "healthy"})
+        return jsonify({"status": "healthy"}) 
 
     @app.route("/health")
     def health_check():
