@@ -10,7 +10,7 @@ def create_app():
     app = Flask(__name__)
     
     # Initialize LangChain components
-    llm = ChatOpenAI(temperature=0.7)
+    llm = ChatOpenAI(openai_api_key='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',temperature=0.7)
     
     # Create prompt template for topic identification
     topic_template = PromptTemplate(
